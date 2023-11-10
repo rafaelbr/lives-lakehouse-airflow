@@ -20,7 +20,7 @@ with DAG(
     def ler_api():
         hook = HttpHook(method='GET', http_conn_id='API_TRANSPARENCIA')
         pagina = 1
-        os.mkdir(f'/tmp/orgaos')
+        os.mkdir(f'/opt/airflow/temp/orgaos')
         while True:
             response = hook.run(endpoint=f'/api-de-dados/orgaos-siape?pagina={pagina}')
             if response.status_code != 200:
@@ -28,7 +28,7 @@ with DAG(
             data = response.json()
             if len(data) == 0:
                 break
-            json.dump(data, open(f'/tmp/orgaos/orgao_{pagina}.json', 'x'))
+            json.dump(data, open(f'//opt/airflow/temp/orgaos/orgao_{pagina}.json', 'x'))
             pagina += 1
 
     @task
@@ -38,14 +38,14 @@ with DAG(
         for file in files:
             print(f'Enviando arquivo {file} para o S3')
             hook.load_file(
-                filename=f'/tmp/orgaos/{file}',
+                filename=f'/opt/airflow/temp/orgaos/{file}',
                 key=f'orgaos_siapi/json/{file}',
                 bucket_name='geekfox-live-bronze'
             )
 
     @task(trigger_rule='all_done')
     def limpa_arquivos():
-        shutil.rmtree(f'/tmp/orgaos', ignore_errors=True)
+        shutil.rmtree(f'/opt/airflow/temp/orgaos', ignore_errors=True)
 
     ler_api() >> envia_s3() >> limpa_arquivos()
 
